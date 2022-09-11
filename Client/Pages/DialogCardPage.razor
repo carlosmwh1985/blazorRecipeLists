@@ -1,0 +1,62 @@
+@page "/dialogcard/{RecId}"
+
+@using Microsoft.EntityFrameworkCore
+@using System.Net.Http
+@using System.Net.Http.Json
+@using CKSummary.Shared.Models
+
+@inject HttpClient Http
+@inject Radzen.DialogService dialogService
+
+<div class="row">
+    <div class="col-lg-6 d-flex">
+        <RadzenCard Style="width: 100%; overflow: hidden;">
+            <h3 class="h5">Recipe</h3>
+            <div class="d-flex flex-row">
+                <RadzenImage Path="@recipe.UrlImage" Class="rounded-circle float-left mt-1 mr-3" Style="width: 90px; height: 90px;" />
+                <div>
+                    <div>Name</div>
+                    <b>@recipe.Name</b>
+                    <div class="mt-3">Where to find?</div>
+                    <RadzenLink Icon="menu_book" Path="@recipe.Url" target="_blank" />
+                    <b>@("Page: " + @recipe.Page + ", " + @recipe.Month + "." + @recipe.Year)</b>
+                </div>
+            </div>
+        </RadzenCard>
+    </div>
+    <div class="col-lg-6 d-flex">
+        <RadzenCard Style="width: 100%; overflow: hidden;">
+            <h3 class="h5">Info</h3>
+            <div class="row">
+                <div class="col">
+                    <div><RadzenIcon Icon="timer" /> Duration</div>
+                    <b>@recipe.Duration</b>
+                    <div><RadzenIcon Icon="moving" /> Difficulty</div>
+                    <b>@recipe.Difficulty</b>
+                </div>
+            </div>
+        </RadzenCard>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12 text-right">
+        <RadzenButton Click="@((args) => dialogService.Close(false))" ButtonStyle="ButtonStyle.Secondary" Text="Cancel" Style="width: 120px" Class="mr-1" />
+        <RadzenButton Click="@((args) => dialogService.Close(true))" Text="OK" Style="width: 120 px" />
+    </div>
+</div>
+
+
+
+@code
+{
+    [Parameter]
+    public int RecId { get; set; }
+
+    Recipe recipe;
+
+        protected override async Task OnInitializedAsync()
+        {
+            recipe = await Http.GetFromJsonAsync<Recipe>($"/api/recipe/details/{RecId}");
+        }
+
+}

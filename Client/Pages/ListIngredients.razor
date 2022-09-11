@@ -1,0 +1,62 @@
+@page "/ingredients"
+
+@using CKSummary.Shared.Models
+@using Microsoft.EntityFrameworkCore
+
+@inject HttpClient Http
+
+<h1>All listed ingredients</h1>
+
+<RadzenDataGrid @ref="ingredientsGrid" AllowFiltering="true" AllowPaging="true" PageSize="@pageSize" AllowSorting="true"
+        Data="@ingredients" TItem="Ingredient">
+
+    <Columns>
+        <RadzenDataGridColumn Width=50px TItem="Ingredient" Title="#" Filterable="false" Sortable="false" TextAlign="TextAlign.Center">
+            <Template Context="data">
+                @(ingredients.IndexOf(data) + 1)
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Ingredient" Property="Name" Title="Ingredient">
+            <Template Context="ingredient">
+                @ingredient.Name
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Ingredient" Property="Count" Title="Count Recipes">
+            <Template Context="ingredient">
+                @ingredient.Count
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+<RadzenPager ShowPagingSummary="true" PagingSummaryFormat="@pagingSummaryFormat" HorizontalAlign="HorizontalAlign.Right" 
+    Count="count" PageSize="@pageSize" PageNumbersCount="5" PageChanged="@PageChanged" />
+
+@code
+{
+    RadzenDataGrid<Ingredient> ingredientsGrid;
+    IList<Ingredient> ingredients;
+
+    string pagingSummaryFormat = "Displaying page {0} of {1} (total {2} records)";
+    int pageSize = 20;
+    int count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ingredients = await Http.GetFromJsonAsync<IList<Ingredient>>("/api/ingredient");
+    }
+
+    void PageChanged(PagerEventArgs args)
+    {
+        ingredients = GetIngredients(args.Skip, args.Top);
+    }
+
+    IList<Ingredient> GetIngredients(int skip, int take)
+    {
+        return ingredients.Skip(skip).Take(take).ToList();
+    }
+
+    @* private string Print(List<String> list)
+    {
+        return String.Join(", ", list);
+    } *@
+}

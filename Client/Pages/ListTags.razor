@@ -1,0 +1,58 @@
+@page "/tags"
+
+@using CKSummary.Shared.Models
+@using Microsoft.EntityFrameworkCore
+
+@inject HttpClient Http
+
+<h1>All listed tags</h1>
+
+<RadzenDataGrid @ref="tagsGrid" AllowFiltering="true" AllowPaging="true" PageSize="@pageSize" AllowSorting="true"
+        Data="@tags" TItem="Tag">
+
+    <Columns>
+        <RadzenDataGridColumn Width=50px TItem="Tag" Title="#" Filterable="false" Sortable="false" TextAlign="TextAlign.Center">
+            <Template Context="data">
+                @(tags.IndexOf(data) + 1)
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Tag" Property="Name" Title="Tag">
+            <Template Context="tag">
+                @tag.Name
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Tag" Property="Count" Title="Count Recipes">
+            <Template Context="tag">
+                @tag.Count
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+<RadzenPager ShowPagingSummary="true" PagingSummaryFormat="@pagingSummaryFormat" HorizontalAlign="HorizontalAlign.Right" 
+    Count="count" PageSize="@pageSize" PageNumbersCount="5" PageChanged="@PageChanged" />
+
+@code
+{
+    RadzenDataGrid<Tag> tagsGrid;
+    IList<Tag> tags;
+
+    string pagingSummaryFormat = "Displaying page {0} of {1} (total {2} records)";
+    int pageSize = 20;
+    int count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        tags = await Http.GetFromJsonAsync<IList<Tag>>("/api/tag");
+    }
+
+    void PageChanged(PagerEventArgs args)
+    {
+        tags = GetTags(args.Skip, args.Top);
+    }
+
+    IList<Tag> GetTags(int skip, int take)
+    {
+        return tags.Skip(skip).Take(take).ToList();
+    }
+
+}

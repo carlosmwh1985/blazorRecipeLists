@@ -1,0 +1,22 @@
+@using CKSummary.Shared.Models
+
+<RadzenPanelMenuItem @bind-Expanded=@Expanded Text="@Item.Name" Path="@Item.Path" Icon="@Item.Icon">
+    @ChildContent
+</RadzenPanelMenuItem>
+
+
+
+@code
+{
+    [Parameter]
+    public MenuItem Item { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public bool Expanded { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> ExpandedChanged { get; set; }
+}

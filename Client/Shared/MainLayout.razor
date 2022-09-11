@@ -1,0 +1,109 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Http
+@using Radzen.Blazor
+@using CKSummary.Shared.Models
+@using CKSummary.Client.Services
+
+@inherits LayoutComponentBase
+
+@inject ThemeService ThemeService
+@inject ItemService ItemService
+@inject NavigationManager UriHelper
+@inject IJSRuntime JSRuntime
+@inject IHttpContextAccessor httpContextAccessor
+
+<RadzenDialog />
+<RadzenNotification />
+<RadzenTooltip />
+<RadzenContextMenu />
+
+<RadzenLayout style="grid-template-areas: 'rz-sidebar rz-header' 'rz-sidebar rz-body' 'rz-sidebar rz-footer'">
+    <!-- HEADER -->
+    <RadzenHeader>
+        <ChildContent>
+            <div class="row justify-content-start align-items-center">
+                <div class="col-5 d-flex align-items-center">
+                    <RadzenSidebarToggle Click="@(args => { sidebarExpanded = !sidebarExpanded; bodyExpanded = !bodyExpanded; })">
+                    </RadzenSidebarToggle>
+                    <RadzenLabel Text="CK_Magazine">
+                    </RadzenLabel>
+                </div>
+            </div>
+            @* <div class="col-7 d-flex align-items-center justify-content-end">
+                <!-- <div class="d-none d-md-inline-flex align-items-center">
+                    Documentation and more
+                </div> -->
+                <RadzenDropDown class="mx-0 mx-lg-3"
+                    TValue="string" TextProperty="Text" ValueProperty="Value"
+                    Data="@ThemeService.Themes" Value="@ThemeService.CurrentTheme"
+                    Change="@ChangeTheme" />
+
+                <!-- TODO: Add links to social media or something, here! -->
+            </div> *@
+        </ChildContent>
+    </RadzenHeader>
+
+    <!-- BODY -->
+    <RadzenBody @ref="@body0" @bind-Expanded="@bodyExpanded">
+        <ChildContent>
+            <RadzenContentContainer Name="main">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-12 pt-4 pb-5 px-3 px-lg-5">
+                            @Body
+                        </div>
+                    </div>
+                </div>
+            </RadzenContentContainer>
+        </ChildContent>
+    </RadzenBody>
+
+    <!-- NAV MENU -->
+    <RadzenSidebar @ref="@sidebar0" @bind-Expanded="@sidebarExpanded" class="demos-sidebar">
+        <ChildContent>
+            Index
+            <RadzenPanelMenu Match="NavLinkMatch.Prefix">
+                @foreach (var item in menuItems)
+                {
+                    <NavigationItem @bind-Expanded=@item.Expanded Item=@item>
+                        @if (item.Children != null)
+                        {
+                            @foreach (var subItem in item.Children)
+                            {
+                                <NavigationItem Item=@subItem />
+                            }
+                        }
+
+                    </NavigationItem>
+                }
+            </RadzenPanelMenu>
+        </ChildContent>
+    </RadzenSidebar>
+</RadzenLayout>
+
+
+
+@code
+{
+    bool sidebarExpanded = true;
+    bool bodyExpanded = false;
+
+    RadzenBody body0;
+
+    RadzenSidebar sidebar0;
+
+    IEnumerable<MenuItem> menuItems;
+
+    protected override void OnInitialized()
+    {
+        ThemeService.Initialize(UriHelper);
+        menuItems = ItemService.GetItems;
+        System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
+    }
+
+    void ChangeTheme(object value)
+    {
+        var url = UriHelper.GetUriWithQueryParameter("theme", $"{value}");
+        UriHelper.NavigateTo(url, true);
+    }
+}

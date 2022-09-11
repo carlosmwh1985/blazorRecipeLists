@@ -1,0 +1,62 @@
+﻿@using CKSummary.Shared.Models
+@using CKSummary.Client.Services
+
+@inject ItemService ItemService
+
+@* <div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">CK_Magazine. A Summary</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div> *@
+
+@* <RadzenCard Style="margin-bottom: 200px; width: fit-content; min-width:200px;" Class="mt-3 mt-auto">
+    <RadzenMenu Click="OnParentClicked">
+        <RadzenMenuItem Text="Home" Icon="home" Path="/"></RadzenMenuItem>
+        <RadzenMenuItem Text="Recipes" Icon="lunch_dinning">
+            <RadzenMenuItem Text="All Recipes" Icon="book" Path="/recipes"></RadzenMenuItem>
+            <RadzenMenuItem Text="All Ingredients" Icon="egg" Path="/ingredients"></RadzenMenuItem>
+        </RadzenMenuItem>
+    </RadzenMenu>
+</RadzenCard> *@
+
+<!--
+<RadzenSidebar @ref="@sidebar0" @bind-Expanded="@sidebarExpanded" class="demos-sidebar">
+    <ChildContent>
+        <RadzenPanelMenu Match="NavLinkMatch.Prefix">
+            @foreach (var item in menuItems)
+            {
+                <NavigationItem @bind-Expanded=@item.Expanded Item=@item>
+                    @if (item.Children != null)
+                    {
+                        @foreach (var subItem in item.Children)
+                        {
+                            <NavigationItem Item=@subItem />
+                        }
+                    }
+
+                </NavigationItem>
+            }
+        </RadzenPanelMenu>
+    </ChildContent>
+</RadzenSidebar>
+-->
+
+
+@* 
+@code {
+
+    RadzenSidebar sidebar0;
+
+    bool sidebarExpanded = true;
+
+    IEnumerable<MenuItem> menuItems;
+
+    protected override void OnInitialized()
+    {
+        menuItems = ItemService.GetItems;
+    }
+
+} *@

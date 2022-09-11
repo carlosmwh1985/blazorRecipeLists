@@ -1,0 +1,16 @@
+@using CKSummary.Client.Services
+
+@inject NavigationManager NavigationManager
+@inject ThemeService ThemeService
+
+<link href="_content/Radzen.Blazor/css/@(ThemeService.CurrentTheme).css" rel="stylesheet" />
+
+
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        ThemeService.Initialize(NavigationManager);
+    }
+}

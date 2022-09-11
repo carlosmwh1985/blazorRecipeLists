@@ -1,0 +1,359 @@
+@page "/recipes"
+
+@using Microsoft.EntityFrameworkCore
+@using System.Linq.Dynamic.Core
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using System.Net.Http
+@using System.Net.Http.Json
+
+@using CKSummary.Shared.Models
+@using CKSummary.Shared.Helpers
+
+
+@inject HttpClient Http
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+
+<h1>List of Recipes</h1>
+
+
+<RadzenDataList WrapItems="true" AllowPaging="false" Data="@recipes" TItem="Recipe">
+    <Template Context="rec">
+        <RadzenCard Style="width:300px;">
+            <div class="d-flex flex-row align-items-center">
+                <RadzenImage Path="@rec.UrlImage" Class="rounded-circle float-left mr-3" Style="width: 80px; height: 80px;" />
+                <div>
+                    <h4 class="mb-0">@rec.Name</h4>
+                    <div>Page: @rec.Page, @(FormatMonth(rec.Month) + " " + rec.Year)</div>
+                    <div Style="float: left">
+                        <RadzenLink Icon="menu_book" Path="@rec.Url" Text="Link to CK" target="_blank" />
+                    </div>
+                    <div Style="float: right">
+                        <RadzenButton Icon="lunch_dining" ButtonStyle="ButtonStyle.Secondary"
+                            Click="@((args) => OpenRecipe(@rec.Id))" />
+                    </div>                    
+                </div>
+            </div>
+            <hr style="border: none; background-color: rgba(0,0,0,.28); height: 1px; margin: 1rem 0;" />
+            <div class="row">
+                <div class="col-md-8 text-truncate">
+                    Tags: @Print(rec.Tags)
+                </div>
+                <div class="col-md-4 text-right">
+                    @rec.Difficulty
+                </div>
+            </div>
+        </RadzenCard>
+    </Template>
+</RadzenDataList>
+<RadzenPager ShowPagingSummary="true" PagingSummaryFormat="@pagingSummaryFormat" HorizontalAlign="HorizontalAlign.Right" 
+    Count="count" PageSize="@pageSize" PageNumbersCount="5" PageChanged="@PageChanged" />
+
+<!-- To Filter -->
+<div class="row px-6">
+    <!-- To filter by ingredient list -->
+    <div class="col-md-4 col-lg-4 col-xl-4 p-4">
+        <RadzenCard class="m-12">
+            <div class="header">
+                <div Style="float: left">
+                    <h4>To Include Ingredients</h4>
+                </div>
+                <div Style="float: right" >
+                    <RadzenButton Click=@OnClearIngClick Text="Clear"
+                        ButtonStyle="ButtonStyle.Danger" Disabled=@(!showIngList) />
+                </div>
+            </div>
+            <RadzenDropDown AllowClear="true" TValue="string"
+                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" AllowFiltering="true" Class="w-100"
+                Placeholder="Select..." Data=@ingredients TextProperty="Name" ValueProperty="Name"
+                Change=@(args => OnChangeIngList(args)) />
+            @if (@showIngList)
+            {
+                <RadzenCard>
+                    <div class="console-content" id="event-console">
+                        @foreach(var ingredient in @ingredientsToFilter)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" IsPill="true"
+                                Text="@ingredient">
+                                @ingredient <a style="text-underline-position:below; cursor:pointer"
+                                    href="javascript: void(0);" @onclick="() => OnBadgeIngClick(ingredient)">x</a>
+                            </RadzenBadge>
+                        }
+                    </div>
+                </RadzenCard>
+            }
+        </RadzenCard>
+    </div>
+
+    <!-- To filter by tags -->
+    <div class="col-md-4 col-lg-4 col-xl-4 p-4">
+        <RadzenCard>
+            <div class="header">
+                <div style="float: left;">
+                    <h4>With the Tags</h4>
+                </div>
+                <div style="float: right;">
+                    <RadzenButton Click=@OnClearTagClick Text="Clear"
+                        ButtonStyle="ButtonStyle.Danger" Disabled=@(!showTagList) />
+                </div>
+            </div>
+            <RadzenDropDown AllowClear="true" TValue="string"
+                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" AllowFiltering="true" Class="w-100"
+                Placeholder="Select..." Data=@tags TextProperty="Name" ValueProperty="Name"
+                Change=@(args => OnChangeTagList(args)) />
+            @if (@showTagList)
+            {
+                <RadzenCard>
+                    <div class="console-content" id="event-console">
+                        @foreach(var tag in @tagsToFilter)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Success" IsPill="true"
+                                Text="@tag">
+                                @tag <a style="text-underline-position:below; cursor:pointer"
+                                    href="javascript: void(0);" @onclick="() => OnBadgeTagClick(tag)">x</a>
+                            </RadzenBadge>
+                        }
+                    </div>
+                </RadzenCard>
+            }
+        </RadzenCard>
+    </div>
+
+    <!-- Buttons -->
+    <div class="col-md-4 col-lg-4 col-xl-4 p-4">
+        <div class="col" style="center">
+            <RadzenButton Click=@OnFilterClick Text="Filter"
+                ButtonStyle="ButtonStyle.Success" Disabled=@disableButtonAllClear />
+            <RadzenButton Click=@OnClearAllClick Text="Clear"
+                ButtonStyle="ButtonStyle.Danger" Disabled=@disableButtonAllClear />
+        </div>
+    </div>
+    
+</div>
+
+
+@code
+{
+    IEnumerable<Recipe> recipesList, recipesToShow;
+    IEnumerable<Recipe> recipes;
+    IEnumerable<Ingredient> ingredients;
+    IEnumerable<Tag> tags;
+    List<string> ingredientsToFilter = new List<string>();
+    List<string> tagsToFilter = new List<string>();
+
+    bool showIngList = false;
+    bool showTagList = false;
+
+    bool disableButtonAllClear = true;
+    bool disableButtonIngClear = true;
+    bool disableButtonTagClear = true;
+
+    string pagingSummaryFormat = "Displaying page {0} of {1} (total {2} records)";
+    int pageSize = 8;
+    int count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recipesList = await Http.GetFromJsonAsync<IEnumerable<Recipe>>("/api/recipe");
+        ingredients = await Http.GetFromJsonAsync<IList<Ingredient>>("/api/ingredient");
+        tags = await Http.GetFromJsonAsync<IEnumerable<Tag>>("/api/tag");
+        recipesToShow = recipesList;
+        ConfigDataList();
+    }
+
+    void ConfigDataList()
+    {
+        count = recipesToShow.Count();
+        recipes = GetRecipes(0, pageSize);
+    }
+
+    void PageChanged(PagerEventArgs args)
+    {
+        recipes = GetRecipes(args.Skip, args.Top);
+        showIngList = true;
+    }
+
+    IEnumerable<Recipe> GetRecipes(int skip, int take)
+    {
+        return recipesToShow.Skip(skip).Take(take).ToList();
+    }
+
+    public async Task OpenRecipe(int id)
+    {
+        await DialogService.OpenAsync<DialogCardPage>($"Recipe {id}",
+            new Dictionary<string, object>() { { "RecId", id } },
+            new DialogOptions() { Width = "700px", Height = "570px", Resizable = true, Draggable = true });
+    }
+
+    private string Print(List<String> list)
+    {
+        return String.Join(", ", list);
+    }
+
+    async void OnFilterClick()
+    {
+        await GetQuery();
+        ConfigDataList();
+    }
+
+    protected async Task GetQuery()
+    {
+        Dictionary<string, List<string>> body = new();
+        body["ingredients"] = ingredientsToFilter;
+        body["tags"] = tagsToFilter;
+        string json = JsonSerializer.Serialize(body);
+        string coded = Base64Encoder.Enconde(json);
+        var tmp = await Http.GetFromJsonAsync<List<Recipe>>($"api/recipe/query/{coded}");
+        if (tmp != null && tmp.Count > 0)
+        {
+            recipesToShow = tmp;
+            ConfigDataList();
+            ShowMessageFilterSuccess();
+        }
+        else
+        {
+            ShowMessageFilterFail();
+        }
+        ConfigDataList();
+    }
+
+    void OnChangeIngList(object value)
+    {
+        var str = value is IEnumerable<object> ? string.Join(", ", (IEnumerable<object>)value) : value;
+        ingredientsToFilter.Add(str.ToString());
+        showIngList = true;
+        CheckButton();
+    }
+
+    void OnChangeTagList(object value)
+    {
+        var str = value is IEnumerable<object> ? string.Join(", ", (IEnumerable<object>)value) : value;
+        tagsToFilter.Add(str.ToString());
+        showTagList = true;
+        CheckButton();
+    }
+
+    void OnClearIngClick()
+    {
+        ingredientsToFilter = new List<string>();
+        recipesToShow = recipesList;
+        ConfigDataList();
+        showIngList = false;
+        CheckButton();
+    }
+
+    void OnClearTagClick()
+    {
+        tagsToFilter = new List<string>();
+        recipesToShow = recipesList;
+        ConfigDataList();
+        showTagList = false;
+        CheckButton();
+    }
+
+    void OnClearAllClick()
+    {
+        OnClearIngClick();
+        OnClearTagClick();
+    }
+
+    void OnBadgeIngClick(string name)
+    {
+        ingredientsToFilter.Remove(name);
+        if (ingredientsToFilter.Count == 0) {
+            showIngList = false;
+        }
+        CheckButton();
+    }
+
+    void OnBadgeTagClick(string name)
+    {
+        tagsToFilter.Remove(name);
+        if (tagsToFilter.Count == 0) {
+            showTagList = false;
+        }
+        CheckButton();
+    }
+
+    void CheckButton()
+    {
+        disableButtonAllClear = (ingredientsToFilter.Count == 0 && tagsToFilter.Count == 0);
+    }
+
+    void ShowMessageFilterSuccess()
+    {
+        NotificationMessage nm = new NotificationMessage
+        {
+            Severity = NotificationSeverity.Success,
+            Summary = "Recipes found!",
+            Detail = $"{count} recipes include the desired Ingredients/Tags",
+            Duration = 10000
+        };
+        NotificationService.Notify(nm);
+    }
+
+    void ShowMessageFilterFail()
+    {
+        NotificationMessage nm = new NotificationMessage
+        {
+            Severity = NotificationSeverity.Error,
+            Summary = "No recipes recovered!",
+            Detail = $"Any of the recipes include the desired Ingredients/Tags",
+            Duration = 10000
+        };
+        NotificationService.Notify(nm);
+    }
+
+    @* string FormatDate(string date)
+    {
+        List<String> vals = date.Split('.').ToList();
+        return FormatMonth(vals[0]) + " " + vals[1];
+    } *@
+
+    private string FormatMonth(int monthInt)
+    {
+        string month = "";
+        switch (monthInt)
+        {
+            case 1:
+                month = "Jan.";
+                break;
+            case 2:
+                month = "Feb.";
+                break;
+            case 3:
+                month = "Mar.";
+                break;
+            case 4:
+                month = "Apr.";
+                break;
+            case 5:
+                month = "May";
+                break;
+            case 6:
+                month = "Jun.";
+                break;
+            case 7:
+                month = "Jul.";
+                break;
+            case 8:
+                month = "Aug.";
+                break;
+            case 9:
+                month = "Sep.";
+                break;
+            case 10:
+                month = "Oct.";
+                break;
+            case 11:
+                month = "Nov.";
+                break;
+            case 12:
+                month = "Dec.";
+                break;
+        }
+        return month;
+    }
+
+}

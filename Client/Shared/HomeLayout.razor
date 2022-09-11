@@ -1,0 +1,32 @@
+@using Microsoft.AspNetCore.Components
+@using Radzen.Blazor
+@using CKSummary.Client.Services
+@using CKSummary.Shared.Models
+
+@inherits LayoutComponentBase
+
+@inject ItemService ItemService
+@inject NavigationManager UriHelper
+@inject IJSRuntime JSRuntime
+
+<RadzenDialog />
+<RadzenNotification />
+<RadzenTooltip />
+<RadzenContextMenu />
+
+<RadzenContentContainer Name="main">
+    @Body
+</RadzenContentContainer>
+
+@code {
+
+    IEnumerable<MenuItem> items;
+
+    protected override void OnInitialized()
+    {
+
+        items = ItemService.GetItems;
+
+        System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
+    }
+}
